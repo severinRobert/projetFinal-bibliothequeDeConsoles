@@ -19,33 +19,33 @@ int main(int argc, char *argv[]) {
     args[argc - 1] = (char *)NULL;
 
     if (pipe(fd) < 0)   {
-        fprintf(stderr, "L'appel de la fonction pipe a raté\n"), exit(EXIT_FAILURE);
+        fprintf(stderr, "erreur sur le pipe\n"), exit(EXIT_FAILURE);
     }
 
     switch (fork()) {
     case -1: /* erreur */
-        fprintf(stderr, "L'appel de la fonction a raté\n");
+        fprintf(stderr, "erreur sur le fork\n");
         exit(EXIT_FAILURE);
     case 0: /* fils */
-        printf("Je suis le fils %d, mon père est %d  \n", getpid(), getppid());
-        printf("Je suis le fils %d, et j'exécute la function : %s\n",getpid(), args[0]);
+        printf("Je suis le fils %d et mon père est %d  \n", getpid(), getppid());
+        printf("Je suis le fils %d et j'exécute la function : %s\n",getpid(), args[0]);
 
         if (close(fd[0]) == -1)
-            fprintf(stderr, "Couldn’t close read end of pipe in child\n"), exit(EXIT_FAILURE);
+            fprintf(stderr, "l'arret de read end dans le pipe chez le fils a raté\n"), exit(EXIT_FAILURE);
 
         if (dup2(fd[1], STDOUT_FILENO) == -1)
             fprintf(stderr, "dup2 dans le fils a raté.\n"), exit(EXIT_FAILURE);
 
         if (close(fd[1]) == -1)
-            fprintf(stderr, "Couldn’t close write end of pipe in child\n"), exit(EXIT_FAILURE);
+            fprintf(stderr, "l'arret de write end dans le pipe chez le fils a raté\n"), exit(EXIT_FAILURE);
 
         execvp(args[0], args);
         /* si le code est executé, execvp a raté. */
-        fprintf(stderr, "Call to execvp function in child failed.\n");
+        fprintf(stderr, "l'appel de la fonction execvp chez le fils a raté\n");
         exit(EXIT_FAILURE);
     default: /* pere */
         if (close(fd[1]) == -1)
-            fprintf(stderr, "Couldn’t close write end of pipe in parent\n"), exit(EXIT_FAILURE);
+            fprintf(stderr, "l'arret de write end dans le pipe chez le père a raté\n"), exit(EXIT_FAILURE);
 
         printf("Je suis le parent %d, et j'imprime le résultat de la commande \n", getpid());
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
             (nbytes < 0) ? fprintf(stderr, "Appel de la fonction de lecture dans le parent raté\n"),
                 exit(EXIT_FAILURE)
                          : write(1, readbuffer, nbytes) == -1
-                ? fprintf(stderr, "Call to write function in parent failed\n"),
+                ? fprintf(stderr, "Appel de la fonction d'écriture dans le parent raté\n"),
                 exit(EXIT_FAILURE) : fprintf(stdout, "Fin du programme ! \n");
         }
     }
