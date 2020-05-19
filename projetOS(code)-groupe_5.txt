@@ -1,0 +1,63 @@
+/* Auteurs : Séverin Robert, Émilien Perremans, Baptiste Funck, Arthur Behets */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define MAX 1000
+
+int main(int argc, char *argv[]) {
+
+    int nbytes, fd[2];
+
+    /* Buffer utilisé pour lire les bytes du pipe dans le parent. */
+    char readbuffer[MAX];
+
+    char *args[argc - 1];   /* pointeur sur argc-1 */
+    for (int j = 0; j < argc - 1; j++) {
+        args[j] = argv[j + 1];
+    }
+    /* Null est requis à la fin de args par execvp.*/
+    args[argc - 1] = (char *)NULL;
+
+    if (pipe(fd) < 0)   {
+        fprintf(stderr, "erreur sur le pipe\n"), exit(EXIT_FAILURE);
+    }
+
+    switch (fork()) {
+    case -1: /* erreur */
+        fprintf(stderr, "erreur sur le fork\n");
+        exit(EXIT_FAILURE);
+    case 0: /* fils */
+        printf("Je suis le fils %d et mon père est %d  \n", getpid(), getppid());
+        printf("Je suis le fils %d et j'exécute la function : %s\n",getpid(), args[0]);
+
+        if (close(fd[0]) == -1)
+            fprintf(stderr, "l'arret de read end dans le pipe chez le fils a raté\n"), exit(EXIT_FAILURE);
+
+        if (dup2(fd[1], STDOUT_FILENO) == -1)
+            fprintf(stderr, "dup2 dans le fils a raté.\n"), exit(EXIT_FAILURE);
+
+        if (close(fd[1]) == -1)
+            fprintf(stderr, "l'arret de write end dans le pipe chez le fils a raté\n"), exit(EXIT_FAILURE);
+
+        execvp(args[0], args);
+        /* si le code est executé, execvp a raté. */
+        fprintf(stderr, "l'appel de la fonction execvp chez le fils a raté\n");
+        exit(EXIT_FAILURE);
+    default: /* pere */
+        if (close(fd[1]) == -1)
+            fprintf(stderr, "l'arret de write end dans le pipe chez le père a raté\n"), exit(EXIT_FAILURE);
+
+        printf("Je suis le parent %d, et j'imprime le résultat de la commande \n", getpid());
+
+        while ((nbytes = read(fd[0], readbuffer, sizeof(readbuffer))) != 0) {
+            (nbytes < 0) ? fprintf(stderr, "Appel de la fonction de lecture dans le parent raté\n"),
+                exit(EXIT_FAILURE)
+                         : write(1, readbuffer, nbytes) == -1
+                ? fprintf(stderr, "Appel de la fonction d'écriture dans le parent raté\n"),
+                exit(EXIT_FAILURE) : fprintf(stdout, "Fin du programme ! \n");
+        }
+    }
+    return 0;
+}
